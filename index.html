@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background" style="background-image: url('https://i.imgur.com/tKKTdeq.jpeg');"></div>
+    <div class="container">
+        <div class="clicker-area">
+            <button id="click-button">
+                <img src="https://i.imgur.com/adVgPC6.jpeg" alt="Кнопка кликера">
+            </button>
+        </div>
+        <div class="coins">
+            <p>Монеты: <span id="coin-count">0.00</span></p>
+        </div>
+        <div class="upgrade-level">
+            <p>Уровень: <span id="upgrade-level-display">1</span></p>
+        </div>
+        <div class="buttons">
+            <button id="upgrade-button">УЛУЧШЕНИЯ</button>
+            <button id="top-button">ТОП</button>
+            <button id="withdraw-button">ВЫВОД</button>
+        </div>
+    </div>
+    <div class="overlay" id="overlay">
+        <div class="popup" id="popup">
+           <p id="popup-message"></p>
+           <button id="close-popup">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+    // Константы
+      const COINS_PER_CLICK_INITIAL = 0.01;
+      const UPGRADE_COST_INITIAL = 5;
+      const UPGRADE_INCREMENT = 5;
+      const COOLDOWN_TIME = 15000;
+      const CLICKS_FOR_COOLDOWN = 1000;
+       const UPGRADE_INCREMENT_COINS_PER_CLICK = 0.001;
+
+      // Ключ для localStorage
+       const SAVE_KEY = 'clicker_save';
+      // Переменные состояния
+      let coinCount = 0;
+      let coinsPerClick = COINS_PER_CLICK_INITIAL;
+      let upgradeCost = UPGRADE_COST_INITIAL;
+      let upgradeLevel = 1;
+      let clickCount = 0;
+      let isCooldown = false;
+      let isTopMessageShown = false;
+      let captchaCode = "";
+      let isCaptchaActive = false;
+
+      // DOM элементы
+      const coinDisplay = document.getElementById('coin-count');
+      const clickButton = document.getElementById('click-button');
+      const upgradeButton = document.getElementById('upgrade-button');
+      const topButton = document.getElementById('top-button');
+      const withdrawButton = document.getElementById('withdraw-button');
+      const overlay = document.getElementById('overlay');
+      const popup = document.getElementById('popup');
+      const popupMessage = document.getElementById('popup-message');
+      const closePopupButton = document.getElementById('close-popup');      const upgradeLevelDisplay = document.getElementById('upgrade-level-display');
+
+        // Функции
+
+    function updateCoinDisplay() {
+            coinDisplay.textContent = coinCount.toFixed(2);
+    }
+        function updateUpgradeLevelDisplay() {
+            upgradeLevelDisplay.textContent = upgradeLevel;
+        }
+
+
+    function showPopup(message) {
+          popupMessage.textContent = message;
+          overlay.classList.add('active');
+    }
+
+    function hidePopup() {
+          overlay.classList.remove('active');
+            if (isCaptchaActive) {
+                isCaptchaActive = false;
+                generateCaptcha();
+            }
+    }
+
+    function saveGame() {
+      const saveState = {
+           coinCount: coinCount,
+           coinsPerClick: coinsPerClick,
+           upgradeCost: upgradeCost,
+           upgradeLevel: upgradeLevel,
+           isTopMessageShown: isTopMessageShown
+       };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
+    }
+
+     function loadGame(){
+       const savedGame = localStorage.getItem(SAVE_KEY);
+          if(savedGame) {
+            try {
+                const loadedState = JSON.parse(savedGame);
+               coinCount = loadedState.coinCount;
+               coinsPerClick = loadedState.coinsPerClick;
+               upgradeCost = loadedState.upgradeCost;
+               upgradeLevel = loadedState.upgradeLevel;
+               isTopMessageShown = loadedState.isTopMessageShown;
+
+               updateCoinDisplay();
+                updateUpgradeLevelDisplay();
+             } catch(e){
+               console.error("Error loading from localStorage", e)
+              }
+          }
+      }
+
+    function generateCaptcha() {
+           captchaCode = String(Math.floor(Math.random() * 900) + 100); // Random 3 digit number
+           popupMessage.innerHTML = Введите капчу: <input type="text" id="captcha-input"> <button id="captcha-submit">Ок</button>;
+          const captchaInput = document.getElementById('captcha-input');
+          const captchaSubmit = document.getElementById('captcha-submit');
+          overlay.classList.add('active');
+
+           captchaSubmit.addEventListener('click', () => {
+           if (captchaInput.value === captchaCode) {
+             hidePopup();
+             clickCount = 0;
+           } else {
+              showPopup("Неверная капча!");
+              setTimeout(hidePopup, 1500);
+             }
+          });
+    }
+
+
+    function handleButtonClick() {
+       if (!isCooldown && !isCaptchaActive) {
+         coinCount += coinsPerClick;
+            updateCoinDisplay();
+           clickCount++;
+
+           if(clickCount >= CLICKS_FOR_COOLDOWN) {
+               isCaptchaActive = true;
+                 generateCaptcha();
+           }
+           saveGame();
+         }
+    }
+        function handleUpgrade() {
+        if (coinCount >= upgradeCost) {
+           coinCount -= upgradeCost;
+             coinsPerClick += UPGRADE_INCREMENT_COINS_PER_CLICK;
+                upgradeCost += UPGRADE_INCREMENT;
+                upgradeLevel++;
+             updateCoinDisplay();
+                updateUpgradeLevelDisplay();
+           showPopup(Вы улучшили клик до ${coinsPerClick.toFixed(3)} за клик. Следующее улучшение стоит ${upgradeCost} монет.);
+           saveGame()
+        } else {
+         showPopup(Недостаточно монет. Стоимость улучшения: ${upgradeCost} монет);
+        }
+    }
+
+
+      // Слушатели событий
+      clickButton.addEventListener('click', handleButtonClick);
+
+      upgradeButton.addEventListener('click', handleUpgrade);
+      withdrawButton.addEventListener('click', () => {
+           showPopup('Напишите в ботаn@MinskyfarmstarsBotnКоманду !вывод ВЫВОД от 15 звезд');
+      });
+
+      topButton.addEventListener('click', () => {
+            if (!isTopMessageShown) {
+               showPopup("Топ еще не доступен");
+                isTopMessageShown = true;
+            }
+      });
+       closePopupButton.addEventListener('click', hidePopup);
+
+      loadGame(); // Загрузка игры при загрузке страницы
+
+    </script>
+</body>
+</html>
